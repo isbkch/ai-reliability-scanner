@@ -1,4 +1,4 @@
-"""Configuration management for the AI Security Scanner."""
+"""Configuration management for the AI Reliability Scanner."""
 
 import os
 from dataclasses import dataclass, field
@@ -31,7 +31,7 @@ class ScannerConfig:
     """Configuration for the scanner engine."""
 
     languages: List[str] = field(default_factory=lambda: ["python", "javascript"])
-    patterns: List[str] = field(default_factory=lambda: ["owasp-top-10", "custom"])
+    patterns: List[str] = field(default_factory=lambda: ["reliability-readiness"])
     false_positive_reduction: bool = True
     max_file_size_mb: int = 10
     max_files_per_scan: int = 10000
@@ -59,7 +59,7 @@ class DatabaseConfig:
 
     host: str = "localhost"
     port: int = 5432
-    database: str = "ai_security_scanner"
+    database: str = "ai_reliability_scanner"
     username: str = "scanner"
     password_env: str = "DB_PASSWORD"
     ssl_mode: str = "prefer"
@@ -112,32 +112,37 @@ class Config:
         """Load configuration from environment variables."""
         config = cls()
 
-        # Override with environment variables
-        if os.getenv("AI_SCANNER_DEBUG"):
-            config.debug = os.getenv("AI_SCANNER_DEBUG").lower() == "true"
+        def env(primary: str, legacy: str) -> Optional[str]:
+            return os.getenv(primary) or os.getenv(legacy)
 
-        if os.getenv("AI_SCANNER_LOG_LEVEL"):
-            config.log_level = os.getenv("AI_SCANNER_LOG_LEVEL")
+        # Override with environment variables
+        if env("AI_RELIABILITY_SCANNER_DEBUG", "AI_SCANNER_DEBUG"):
+            config.debug = env("AI_RELIABILITY_SCANNER_DEBUG", "AI_SCANNER_DEBUG").lower() == "true"
+
+        if env("AI_RELIABILITY_SCANNER_LOG_LEVEL", "AI_SCANNER_LOG_LEVEL"):
+            config.log_level = env("AI_RELIABILITY_SCANNER_LOG_LEVEL", "AI_SCANNER_LOG_LEVEL")
 
         # LLM configuration
-        if os.getenv("AI_SCANNER_LLM_PROVIDER"):
-            config.llm.provider = os.getenv("AI_SCANNER_LLM_PROVIDER")
+        if env("AI_RELIABILITY_SCANNER_LLM_PROVIDER", "AI_SCANNER_LLM_PROVIDER"):
+            config.llm.provider = env(
+                "AI_RELIABILITY_SCANNER_LLM_PROVIDER", "AI_SCANNER_LLM_PROVIDER"
+            )
 
-        if os.getenv("AI_SCANNER_LLM_MODEL"):
-            config.llm.model = os.getenv("AI_SCANNER_LLM_MODEL")
+        if env("AI_RELIABILITY_SCANNER_LLM_MODEL", "AI_SCANNER_LLM_MODEL"):
+            config.llm.model = env("AI_RELIABILITY_SCANNER_LLM_MODEL", "AI_SCANNER_LLM_MODEL")
 
         # Database configuration
-        if os.getenv("AI_SCANNER_DB_HOST"):
-            config.database.host = os.getenv("AI_SCANNER_DB_HOST")
+        if env("AI_RELIABILITY_SCANNER_DB_HOST", "AI_SCANNER_DB_HOST"):
+            config.database.host = env("AI_RELIABILITY_SCANNER_DB_HOST", "AI_SCANNER_DB_HOST")
 
-        if os.getenv("AI_SCANNER_DB_PORT"):
-            config.database.port = int(os.getenv("AI_SCANNER_DB_PORT"))
+        if env("AI_RELIABILITY_SCANNER_DB_PORT", "AI_SCANNER_DB_PORT"):
+            config.database.port = int(env("AI_RELIABILITY_SCANNER_DB_PORT", "AI_SCANNER_DB_PORT"))
 
-        if os.getenv("AI_SCANNER_DB_NAME"):
-            config.database.database = os.getenv("AI_SCANNER_DB_NAME")
+        if env("AI_RELIABILITY_SCANNER_DB_NAME", "AI_SCANNER_DB_NAME"):
+            config.database.database = env("AI_RELIABILITY_SCANNER_DB_NAME", "AI_SCANNER_DB_NAME")
 
-        if os.getenv("AI_SCANNER_DB_USER"):
-            config.database.username = os.getenv("AI_SCANNER_DB_USER")
+        if env("AI_RELIABILITY_SCANNER_DB_USER", "AI_SCANNER_DB_USER"):
+            config.database.username = env("AI_RELIABILITY_SCANNER_DB_USER", "AI_SCANNER_DB_USER")
 
         return config
 
@@ -247,10 +252,16 @@ def load_config(config_path: Optional[str] = None) -> Config:
 
     # Look for config file in standard locations
     standard_locations = [
+        ".ai-reliability-scanner.yml",
+        ".ai-reliability-scanner.yaml",
+        "ai-reliability-scanner.yml",
+        "ai-reliability-scanner.yaml",
         ".ai-security-scanner.yml",
         ".ai-security-scanner.yaml",
         "ai-security-scanner.yml",
         "ai-security-scanner.yaml",
+        os.path.expanduser("~/.ai-reliability-scanner.yml"),
+        os.path.expanduser("~/.ai-reliability-scanner.yaml"),
         os.path.expanduser("~/.ai-security-scanner.yml"),
         os.path.expanduser("~/.ai-security-scanner.yaml"),
     ]

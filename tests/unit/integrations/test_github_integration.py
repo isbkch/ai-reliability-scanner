@@ -1,5 +1,6 @@
 """Tests for GitHub integration."""
 
+import asyncio
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -22,13 +23,7 @@ from ai_security_scanner.integrations.github.integration import GitHubIntegratio
 @pytest.fixture
 def mock_config() -> Config:
     """Create mock configuration."""
-    config = Mock(spec=Config)
-    config.github = Mock()
-    config.github.token_env = "GITHUB_TOKEN"
-    config.github.api_base_url = "https://api.github.com"
-    config.github.timeout = 30
-    config.github.max_file_size = 1048576  # 1MB
-    config.scanner = Mock()
+    config = Config()
     config.scanner.enable_ai_analysis = False
     config.get_api_key = Mock(return_value="test_token_123")
     return config
@@ -59,7 +54,7 @@ class TestGitHubIntegrationInit:
 
 
 class TestPathSanitization:
-    """Test path sanitization for security."""
+    """Test path sanitization."""
 
     @pytest.fixture
     def integration(self, mock_config: Config) -> GitHubIntegration:
@@ -90,7 +85,6 @@ class TestPathSanitization:
             "src/main.py",
             "README.md",
             ".github/workflows/ci.yml",
-            ".gitignore",
             "docs/api/index.md",
         ],
     )
@@ -135,29 +129,44 @@ class TestCheckRunCreation:
             scan_timestamp=datetime.now(),
             vulnerabilities=[
                 VulnerabilityResult(
-                    vulnerability_type="SQL Injection",
+                    id="finding-1",
+                    vulnerability_type="missing_http_timeout_python",
+                    title="HTTP call without timeout",
                     severity=Severity.HIGH,
                     confidence=Confidence.HIGH,
-                    description="SQL injection vulnerability",
+                    description="HTTP call without timeout",
                     location=Location(file_path="app.py", line_number=42),
-                    cwe_id="CWE-89",
-                    remediation="Use parameterized queries",
+                    code_snippet="requests.get(url)",
+                    remediation="Pass timeout=...",
                 )
             ],
+            repository_url=None,
+            repository_name="owner/repo",
+            branch="main",
+            commit_hash=None,
+            scanner_version="0.1.0",
         )
 
     def test_get_check_conclusion_success(self, integration: GitHubIntegration) -> None:
         """Test check conclusion for clean scan."""
         scan_result = ScanResult(
-            scan_id="test", files_scanned=5, total_lines_scanned=100, scan_duration=1.0, scan_timestamp=datetime.now(), vulnerabilities=[]
+            scan_id="test",
+            files_scanned=5,
+            total_lines_scanned=100,
+            scan_duration=1.0,
+            scan_timestamp=datetime.now(),
+            vulnerabilities=[],
+            repository_url=None,
+            repository_name="owner/repo",
+            branch="main",
+            commit_hash=None,
+            scanner_version="0.1.0",
         )
         conclusion = integration._get_check_conclusion(scan_result)
         assert conclusion == "success"
 
-    def test_get_check_conclusion_failure_critical(
-        self, integration: GitHubIntegration
-    ) -> None:
-        """Test check conclusion for critical vulnerabilities."""
+    def test_get_check_conclusion_failure_critical(self, integration: GitHubIntegration) -> None:
+        """Test check conclusion for critical findings."""
         scan_result = ScanResult(
             scan_id="test",
             files_scanned=5,
@@ -166,30 +175,47 @@ class TestCheckRunCreation:
             scan_timestamp=datetime.now(),
             vulnerabilities=[
                 VulnerabilityResult(
-                    vulnerability_type="RCE",
+                    id="finding-critical",
+                    vulnerability_type="service_without_health_check",
+                    title="Service without health endpoint",
                     severity=Severity.CRITICAL,
                     confidence=Confidence.HIGH,
-                    description="Critical vuln",
+                    description="Critical reliability risk",
                     location=Location(file_path="app.py", line_number=10),
-                    cwe_id="CWE-78",
+                    code_snippet="app = FastAPI()",
                 )
             ],
+            repository_url=None,
+            repository_name="owner/repo",
+            branch="main",
+            commit_hash=None,
+            scanner_version="0.1.0",
         )
         conclusion = integration._get_check_conclusion(scan_result)
         assert conclusion == "failure"
 
     def test_create_check_summary_no_vulns(self, integration: GitHubIntegration) -> None:
-        """Test check summary with no vulnerabilities."""
+        """Test check summary with no findings."""
         scan_result = ScanResult(
-            scan_id="test", files_scanned=5, total_lines_scanned=100, scan_duration=1.0, scan_timestamp=datetime.now(), vulnerabilities=[]
+            scan_id="test",
+            files_scanned=5,
+            total_lines_scanned=100,
+            scan_duration=1.0,
+            scan_timestamp=datetime.now(),
+            vulnerabilities=[],
+            repository_url=None,
+            repository_name="owner/repo",
+            branch="main",
+            commit_hash=None,
+            scanner_version="0.1.0",
         )
         summary = integration._create_check_summary(scan_result)
-        assert "No security vulnerabilities found" in summary
+        assert "No reliability risks found" in summary
 
     def test_create_check_summary_with_vulns(
         self, integration: GitHubIntegration, sample_scan_result: ScanResult
     ) -> None:
-        """Test check summary with vulnerabilities."""
+        """Test check summary with findings."""
         summary = integration._create_check_summary(sample_scan_result)
         assert "Found" in summary
         assert "High" in summary
@@ -199,10 +225,10 @@ class TestCheckRunCreation:
     ) -> None:
         """Test check details creation."""
         details = integration._create_check_details(sample_scan_result)
-        assert "Scan Results" in details
+        assert "Reliability Scan Results" in details
         assert "Files Scanned" in details
         assert "app.py" in details
-        assert "SQL Injection" in details
+        assert "missing_http_timeout_python" in details
 
 
 class TestRepositoryInfo:
@@ -250,7 +276,6 @@ class TestRepositoryInfo:
             integration.get_repository_info("owner/nonexistent")
 
 
-@pytest.mark.asyncio
 class TestRepositoryScanning:
     """Test repository scanning functionality."""
 
@@ -269,11 +294,16 @@ class TestRepositoryScanning:
                     scan_duration=1.0,
                     scan_timestamp=datetime.now(),
                     vulnerabilities=[],
+                    repository_url=None,
+                    repository_name=None,
+                    branch=None,
+                    commit_hash=None,
+                    scanner_version="0.1.0",
                 )
             )
             return integration
 
-    async def test_scan_repository_basic(self, integration: GitHubIntegration) -> None:
+    def test_scan_repository_basic(self, integration: GitHubIntegration) -> None:
         """Test basic repository scanning."""
         mock_repo = Mock()
         mock_repo.default_branch = "main"
@@ -288,7 +318,7 @@ class TestRepositoryScanning:
             mock_download.return_value = "/tmp/test"
 
             with patch("shutil.rmtree"):
-                result = await integration.scan_repository("owner/repo")
+                result = asyncio.run(integration.scan_repository("owner/repo"))
 
                 assert result.repository_name == "owner/repo"
                 assert result.branch == "main"

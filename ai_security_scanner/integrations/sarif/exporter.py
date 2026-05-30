@@ -1,4 +1,4 @@
-"""SARIF (Static Analysis Results Interchange Format) exporter."""
+"""SARIF exporter for reliability scan results."""
 
 import uuid
 from datetime import datetime
@@ -8,12 +8,15 @@ from ai_security_scanner.core.models import ScanResult, VulnerabilityResult
 
 
 class SARIFExporter:
-    """SARIF format exporter for vulnerability scan results."""
+    """SARIF format exporter for reliability scan results."""
 
     def __init__(self):
         """Initialize SARIF exporter."""
         self.version = "2.1.0"
-        self.schema_uri = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+        self.schema_uri = (
+            "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/"
+            "Schemata/sarif-schema-2.1.0.json"
+        )
 
     def export(self, scan_result: ScanResult) -> Dict[str, Any]:
         """Export scan result to SARIF format.
@@ -65,62 +68,115 @@ class SARIFExporter:
         """
         return {
             "driver": {
-                "name": "AI Security Scanner",
+                "name": "AI Reliability Scanner",
                 "version": "0.1.0",
-                "informationUri": "https://github.com/isbkch/ai-security-scanner",
+                "informationUri": "https://github.com/isbkch/ai-reliability-scanner",
                 "semanticVersion": "0.1.0",
-                "organization": "AI Security Scanner Contributors",
+                "organization": "AI Reliability Scanner Contributors",
                 "rules": self._create_rules(),
             }
         }
 
     def _create_rules(self) -> List[Dict[str, Any]]:
-        """Create SARIF rules for vulnerability types.
+        """Create SARIF rules for reliability finding types.
 
         Returns:
             List of SARIF rule objects
         """
-        # Common vulnerability rules
         rules = [
             {
-                "id": "sql_injection",
-                "name": "SQLInjection",
-                "shortDescription": {"text": "SQL Injection vulnerability"},
-                "fullDescription": {"text": "Potential SQL injection vulnerability detected"},
+                "id": "timeouts",
+                "name": "TimeoutHygiene",
+                "shortDescription": {"text": "Missing timeout controls"},
+                "fullDescription": {"text": "Dependency calls should have explicit timeouts."},
                 "defaultConfiguration": {"level": "error"},
-                "properties": {"tags": ["security", "injection", "sql"], "precision": "high"},
+                "properties": {"tags": ["reliability", "timeouts"], "precision": "high"},
             },
             {
-                "id": "xss",
-                "name": "CrossSiteScripting",
-                "shortDescription": {"text": "Cross-Site Scripting vulnerability"},
-                "fullDescription": {"text": "Potential XSS vulnerability detected"},
+                "id": "retries",
+                "name": "RetryDiscipline",
+                "shortDescription": {"text": "Unsafe retry behavior"},
+                "fullDescription": {
+                    "text": "Retries should be bounded and use backoff with jitter."
+                },
                 "defaultConfiguration": {"level": "error"},
-                "properties": {"tags": ["security", "injection", "xss"], "precision": "high"},
+                "properties": {"tags": ["reliability", "retries"], "precision": "medium"},
             },
             {
-                "id": "weak_crypto",
-                "name": "WeakCryptography",
-                "shortDescription": {"text": "Weak cryptographic algorithm"},
-                "fullDescription": {"text": "Use of weak or deprecated cryptographic algorithm"},
+                "id": "circuit_breakers",
+                "name": "CircuitBreakerCoverage",
+                "shortDescription": {"text": "Missing circuit breaker"},
+                "fullDescription": {"text": "High-volume dependency calls should be isolated."},
                 "defaultConfiguration": {"level": "warning"},
-                "properties": {"tags": ["security", "cryptography"], "precision": "high"},
+                "properties": {"tags": ["reliability", "resilience"], "precision": "medium"},
             },
             {
-                "id": "hardcoded_secrets",
-                "name": "HardcodedSecrets",
-                "shortDescription": {"text": "Hardcoded secrets"},
-                "fullDescription": {"text": "Hardcoded credentials or secrets detected"},
+                "id": "database_pooling",
+                "name": "DatabasePooling",
+                "shortDescription": {"text": "Unsafe database pooling"},
+                "fullDescription": {
+                    "text": "Database clients need explicit pool limits and liveness checks."
+                },
                 "defaultConfiguration": {"level": "error"},
-                "properties": {"tags": ["security", "secrets"], "precision": "medium"},
+                "properties": {"tags": ["reliability", "database"], "precision": "high"},
             },
             {
-                "id": "insecure_deserialization",
-                "name": "InsecureDeserialization",
-                "shortDescription": {"text": "Insecure deserialization"},
-                "fullDescription": {"text": "Insecure deserialization vulnerability detected"},
+                "id": "health_checks",
+                "name": "HealthCheckCoverage",
+                "shortDescription": {"text": "Missing health checks"},
+                "fullDescription": {
+                    "text": "Services should expose health and readiness endpoints."
+                },
                 "defaultConfiguration": {"level": "error"},
-                "properties": {"tags": ["security", "deserialization"], "precision": "high"},
+                "properties": {"tags": ["reliability", "operations"], "precision": "high"},
+            },
+            {
+                "id": "idempotency",
+                "name": "IdempotencyControls",
+                "shortDescription": {"text": "Missing idempotency controls"},
+                "fullDescription": {
+                    "text": "Mutating endpoints should defend against duplicate retries."
+                },
+                "defaultConfiguration": {"level": "error"},
+                "properties": {"tags": ["reliability", "idempotency"], "precision": "medium"},
+            },
+            {
+                "id": "queue_backpressure",
+                "name": "QueueBackpressure",
+                "shortDescription": {"text": "Missing queue backpressure"},
+                "fullDescription": {
+                    "text": "Queues and publishers should be bounded or flow-controlled."
+                },
+                "defaultConfiguration": {"level": "error"},
+                "properties": {"tags": ["reliability", "queues"], "precision": "high"},
+            },
+            {
+                "id": "observability",
+                "name": "ObservabilityCoverage",
+                "shortDescription": {"text": "Missing failure telemetry"},
+                "fullDescription": {"text": "Failure paths should log and emit telemetry."},
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {"tags": ["reliability", "observability"], "precision": "high"},
+            },
+            {
+                "id": "graceful_shutdown",
+                "name": "GracefulShutdown",
+                "shortDescription": {"text": "Missing graceful shutdown"},
+                "fullDescription": {
+                    "text": "Workers should handle shutdown and drain in-flight work."
+                },
+                "defaultConfiguration": {"level": "error"},
+                "properties": {"tags": ["reliability", "shutdown"], "precision": "medium"},
+            },
+            {
+                "id": "config_safety",
+                "name": "ConfigurationSafety",
+                "shortDescription": {"text": "Unsafe production defaults"},
+                "fullDescription": {
+                    "text": "Configuration defaults should be safe for production."
+                },
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {"tags": ["reliability", "configuration"], "precision": "medium"},
             },
         ]
 
@@ -153,10 +209,10 @@ class SARIFExporter:
     def _create_result(
         self, vulnerability: VulnerabilityResult, scan_result: ScanResult
     ) -> Dict[str, Any]:
-        """Create SARIF result object for a vulnerability.
+        """Create SARIF result object for a reliability finding.
 
         Args:
-            vulnerability: Vulnerability result
+            vulnerability: Reliability finding
             scan_result: Scan result
 
         Returns:
@@ -197,11 +253,11 @@ class SARIFExporter:
             },
         }
 
-        # Add CWE information if available
+        # Add CWE information if available for compatibility with legacy records.
         if vulnerability.cwe_id:
             result["properties"]["cwe"] = vulnerability.cwe_id
 
-        # Add OWASP category if available
+        # Add legacy category metadata if available for compatibility with old records.
         if vulnerability.owasp_category:
             result["properties"]["owasp_category"] = vulnerability.owasp_category
 
@@ -220,7 +276,7 @@ class SARIFExporter:
         if vulnerability.remediation:
             result["fixes"] = [{"description": {"text": vulnerability.remediation}}]
 
-        # Add related locations for similar vulnerabilities
+        # Add related locations for similar findings.
         if "similar_vulnerabilities" in vulnerability.metadata:
             result["relatedLocations"] = [
                 {
@@ -229,7 +285,7 @@ class SARIFExporter:
                         "region": {"startLine": loc["line_number"]},
                     },
                     "message": {
-                        "text": f"Similar vulnerability (similarity: {loc.get('similarity', 'unknown')})"
+                        "text": f"Similar finding (similarity: {loc.get('similarity', 'unknown')})"
                     },
                 }
                 for loc in vulnerability.metadata["similar_vulnerabilities"]
@@ -246,7 +302,7 @@ class SARIFExporter:
         Returns:
             List of SARIF artifact objects
         """
-        # Get unique file paths from vulnerabilities
+        # Get unique file paths from findings.
         file_paths = set()
         for vuln in scan_result.vulnerabilities:
             file_paths.add(vuln.location.file_path)
@@ -286,35 +342,36 @@ class SARIFExporter:
         return details
 
     def _get_rule_index(self, vulnerability_type: str) -> int:
-        """Get rule index for vulnerability type.
+        """Get rule index for finding type.
 
         Args:
-            vulnerability_type: Vulnerability type
+            vulnerability_type: Finding type
 
         Returns:
             Rule index
         """
         rule_mapping = {
-            "sql_injection": 0,
-            "sql_injection_python_format": 0,
-            "sql_injection_python_fstring": 0,
-            "sql_injection_js_concatenation": 0,
-            "sql_injection_js_template": 0,
-            "xss": 1,
-            "xss_innerhtml": 1,
-            "xss_eval": 1,
-            "xss_python_render_template": 1,
-            "weak_crypto": 2,
-            "weak_crypto_md5": 2,
-            "weak_crypto_sha1": 2,
-            "weak_crypto_js_math_random": 2,
-            "hardcoded_secrets": 3,
-            "hardcoded_password": 3,
-            "hardcoded_api_key": 3,
-            "hardcoded_db_connection": 3,
-            "insecure_deserialization": 4,
-            "insecure_pickle": 4,
-            "insecure_eval_deserialize": 4,
+            "missing_http_timeout_python": 0,
+            "missing_subprocess_timeout_python": 0,
+            "missing_fetch_timeout_javascript": 0,
+            "missing_axios_timeout_javascript": 0,
+            "retry_without_backoff_python": 1,
+            "retry_without_backoff_javascript": 1,
+            "external_call_without_circuit_breaker_python": 2,
+            "external_call_without_circuit_breaker_javascript": 2,
+            "sqlalchemy_engine_without_pool_safety": 3,
+            "direct_database_connect_without_pool": 3,
+            "javascript_db_client_without_pool_limits": 3,
+            "service_without_health_check": 4,
+            "mutating_endpoint_without_idempotency_key": 5,
+            "unbounded_asyncio_queue": 6,
+            "publisher_without_backpressure_javascript": 6,
+            "swallowed_exception_without_logging": 7,
+            "swallowed_exception_without_logging_javascript": 7,
+            "long_running_loop_without_shutdown_hook": 8,
+            "unsafe_debug_default": 9,
+            "disabled_timeout_default": 9,
+            "environment_timeout_default_disabled": 9,
         }
 
         return rule_mapping.get(vulnerability_type, 0)
@@ -365,17 +422,21 @@ class SARIFExporter:
         return "\n".join(clean_lines)
 
     def _calculate_line_hash(self, vulnerability: VulnerabilityResult) -> str:
-        """Calculate hash for the vulnerability location.
+        """Calculate hash for the finding location.
 
         Args:
-            vulnerability: Vulnerability result
+            vulnerability: Reliability finding
 
         Returns:
             Hash string
         """
         import hashlib
 
-        content = f"{vulnerability.location.file_path}:{vulnerability.location.line_number}:{vulnerability.vulnerability_type}"
+        content = (
+            f"{vulnerability.location.file_path}:"
+            f"{vulnerability.location.line_number}:"
+            f"{vulnerability.vulnerability_type}"
+        )
         return hashlib.md5(content.encode()).hexdigest()[:8]
 
     def _get_mime_type(self, file_path: str) -> str:

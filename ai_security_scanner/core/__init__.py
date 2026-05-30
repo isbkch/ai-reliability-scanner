@@ -1,1 +1,1 @@
-"""Core modules for the AI Security Scanner."""
+"""Core modules for the AI Reliability Scanner."""

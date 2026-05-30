@@ -1,4 +1,4 @@
-"""Custom exceptions for AI Security Scanner.
+"""Custom exceptions for AI Reliability Scanner.
 
 This module defines a hierarchy of exceptions for better error handling
 and debugging across the application.
@@ -8,7 +8,7 @@ from typing import Optional
 
 
 class SecurityScannerError(Exception):
-    """Base exception for all AI Security Scanner errors."""
+    """Base exception for all AI Reliability Scanner errors."""
 
     def __init__(self, message: str, details: Optional[dict] = None) -> None:
         """Initialize the exception.
@@ -171,7 +171,7 @@ class LLMAuthenticationError(LLMError):
 
 
 class AnalysisError(LLMError):
-    """Raised when vulnerability analysis fails."""
+    """Raised when reliability analysis fails."""
 
     pass
 
@@ -303,7 +303,7 @@ class PatternError(SecurityScannerError):
 
 
 class InvalidPatternError(PatternError):
-    """Raised when a vulnerability pattern is invalid."""
+    """Raised when a reliability pattern is invalid."""
 
     def __init__(self, pattern_name: str, reason: Optional[str] = None) -> None:
         """Initialize with pattern details.

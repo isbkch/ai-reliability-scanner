@@ -31,7 +31,7 @@ class ScanPersistenceService:
 
         Args:
             scan_result: Complete scan result
-            persist_vulnerabilities: Whether to persist vulnerability details
+            persist_vulnerabilities: Whether to persist finding details
 
         Returns:
             True if successful, False otherwise
@@ -43,7 +43,7 @@ class ScanPersistenceService:
                 # Calculate severity counts
                 severity_counts = self._calculate_severity_counts(scan_result.vulnerabilities)
 
-                # Detect languages from vulnerabilities
+                # Detect languages from findings.
                 languages_detected = self._get_languages_from_vulnerabilities(
                     scan_result.vulnerabilities
                 )
@@ -75,7 +75,7 @@ class ScanPersistenceService:
                     severity_counts=severity_counts,
                 )
 
-                # Persist vulnerabilities if requested
+                # Persist findings if requested.
                 if persist_vulnerabilities:
                     for vuln in scan_result.vulnerabilities:
                         self._save_vulnerability(repository, scan_result.scan_id, vuln)
@@ -83,7 +83,7 @@ class ScanPersistenceService:
                 session.commit()
                 logger.info(
                     f"Saved scan result {scan_result.scan_id} with "
-                    f"{len(scan_result.vulnerabilities)} vulnerabilities"
+                    f"{len(scan_result.vulnerabilities)} findings"
                 )
                 return True
 
@@ -97,12 +97,12 @@ class ScanPersistenceService:
         scan_id: str,
         vulnerability: VulnerabilityResult,
     ) -> None:
-        """Save a single vulnerability to database.
+        """Save a single finding to database.
 
         Args:
             repository: Repository instance
             scan_id: Scan identifier
-            vulnerability: Vulnerability result
+            vulnerability: Finding result
         """
         # Extract location information
         line_number = None
@@ -122,7 +122,7 @@ class ScanPersistenceService:
             severity=vulnerability.severity,
             confidence=vulnerability.confidence,
             description=vulnerability.description,
-            file_path=vulnerability.file_path,
+            file_path=vulnerability.location.file_path if vulnerability.location else "",
             line_number=line_number,
             column_number=column_number,
             end_line_number=end_line_number,
@@ -141,7 +141,7 @@ class ScanPersistenceService:
         """Calculate counts by severity level.
 
         Args:
-            vulnerabilities: List of vulnerabilities
+            vulnerabilities: List of findings
 
         Returns:
             Dictionary mapping severity to count
@@ -160,10 +160,10 @@ class ScanPersistenceService:
     def _get_languages_from_vulnerabilities(
         self, vulnerabilities: List[VulnerabilityResult]
     ) -> List[str]:
-        """Extract unique languages from vulnerabilities.
+        """Extract unique languages from findings.
 
         Args:
-            vulnerabilities: List of vulnerabilities
+            vulnerabilities: List of findings
 
         Returns:
             List of unique language names
@@ -171,8 +171,9 @@ class ScanPersistenceService:
         languages = set()
         for vuln in vulnerabilities:
             # Try to infer language from file extension
-            if vuln.file_path:
-                ext = vuln.file_path.split(".")[-1].lower()
+            file_path = vuln.location.file_path if vuln.location else ""
+            if file_path:
+                ext = file_path.split(".")[-1].lower()
                 language_map = {
                     "py": "python",
                     "js": "javascript",
@@ -284,10 +285,10 @@ class ScanPersistenceService:
         status: str,
         fixed_in_commit: Optional[str] = None,
     ) -> bool:
-        """Update vulnerability status.
+        """Update finding status.
 
         Args:
-            vuln_id: Vulnerability UUID
+            vuln_id: Finding UUID
             status: New status (open, fixed, false_positive, ignored)
             fixed_in_commit: Optional commit hash where fixed
 
@@ -308,11 +309,11 @@ class ScanPersistenceService:
 
                 if vuln:
                     session.commit()
-                    logger.info(f"Updated vulnerability {vuln_id} status to {status}")
+                    logger.info(f"Updated finding {vuln_id} status to {status}")
                     return True
 
                 return False
 
         except Exception as e:
-            logger.error(f"Failed to update vulnerability status: {e}")
+            logger.error(f"Failed to update finding status: {e}")
             return False

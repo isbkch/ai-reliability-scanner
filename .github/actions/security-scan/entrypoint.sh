@@ -14,14 +14,14 @@ error() {
 # Parse inputs
 SCAN_PATH="${1:-./}"
 OUTPUT_FORMAT="${INPUT_OUTPUT_FORMAT:-sarif}"
-OUTPUT_FILE="${INPUT_OUTPUT_FILE:-security-results.sarif}"
+OUTPUT_FILE="${INPUT_OUTPUT_FILE:-reliability-results.sarif}"
 SEVERITY_THRESHOLD="${INPUT_SEVERITY_THRESHOLD:-MEDIUM}"
 LANGUAGES="${INPUT_LANGUAGES:-python,javascript}"
 ENABLE_AI="${INPUT_ENABLE_AI_ANALYSIS:-true}"
 FAIL_ON_FINDINGS="${INPUT_FAIL_ON_FINDINGS:-true}"
 UPLOAD_SARIF="${INPUT_UPLOAD_SARIF:-true}"
 
-log "Starting AI Security Scanner"
+log "Starting AI Reliability Scanner"
 log "Scan path: $SCAN_PATH"
 log "Output format: $OUTPUT_FORMAT"
 log "Output file: $OUTPUT_FILE"
@@ -30,7 +30,7 @@ log "Languages: $LANGUAGES"
 log "AI analysis enabled: $ENABLE_AI"
 
 # Build scan command
-SCAN_CMD="ai-security-scanner scan $SCAN_PATH"
+SCAN_CMD="ai-reliability-scanner scan $SCAN_PATH"
 SCAN_CMD="$SCAN_CMD --output $OUTPUT_FORMAT"
 SCAN_CMD="$SCAN_CMD --file $OUTPUT_FILE"
 SCAN_CMD="$SCAN_CMD --severity $SEVERITY_THRESHOLD"
@@ -64,31 +64,32 @@ fi
 # Parse results if SARIF format
 if [ "$OUTPUT_FORMAT" = "sarif" ]; then
     # Extract metrics from SARIF file
-    VULNERABILITIES_FOUND=$(jq '.runs[0].results | length' "$OUTPUT_FILE" 2>/dev/null || echo "0")
+    FINDINGS_FOUND=$(jq '.runs[0].results | length' "$OUTPUT_FILE" 2>/dev/null || echo "0")
     
     # Get scan duration and files scanned from SARIF properties
     SCAN_DURATION=$(jq -r '.runs[0].invocations[0].executionSuccessful // "unknown"' "$OUTPUT_FILE" 2>/dev/null || echo "unknown")
     FILES_SCANNED=$(jq -r '.runs[0].artifacts | length' "$OUTPUT_FILE" 2>/dev/null || echo "0")
 else
     # For other formats, set default values
-    VULNERABILITIES_FOUND="unknown"
+    FINDINGS_FOUND="unknown"
     SCAN_DURATION="unknown"
     FILES_SCANNED="unknown"
 fi
 
 # Set outputs
-echo "vulnerabilities-found=$VULNERABILITIES_FOUND" >> $GITHUB_OUTPUT
+echo "findings-found=$FINDINGS_FOUND" >> $GITHUB_OUTPUT
+echo "vulnerabilities-found=$FINDINGS_FOUND" >> $GITHUB_OUTPUT
 echo "scan-duration=$SCAN_DURATION" >> $GITHUB_OUTPUT
 echo "files-scanned=$FILES_SCANNED" >> $GITHUB_OUTPUT
 echo "results-file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
 
-log "Vulnerabilities found: $VULNERABILITIES_FOUND"
+log "Findings found: $FINDINGS_FOUND"
 log "Files scanned: $FILES_SCANNED"
 log "Results saved to: $OUTPUT_FILE"
 
-# Upload SARIF file to GitHub Security tab
-if [ "$OUTPUT_FORMAT" = "sarif" ] && [ "$UPLOAD_SARIF" = "true" ] && [ "$VULNERABILITIES_FOUND" != "0" ]; then
-    log "Uploading SARIF results to GitHub Security tab"
+# Upload SARIF file to GitHub code scanning.
+if [ "$OUTPUT_FORMAT" = "sarif" ] && [ "$UPLOAD_SARIF" = "true" ] && [ "$FINDINGS_FOUND" != "0" ]; then
+    log "Uploading SARIF results to GitHub code scanning"
     
     # Use GitHub CLI to upload SARIF
     if command -v gh &> /dev/null; then
@@ -104,28 +105,28 @@ fi
 
 # Create job summary
 {
-    echo "# 🛡️ AI Security Scanner Results"
+    echo "# AI Reliability Scanner Results"
     echo ""
     echo "| Metric | Value |"
     echo "|--------|-------|"
-    echo "| Vulnerabilities Found | $VULNERABILITIES_FOUND |"
+    echo "| Findings Found | $FINDINGS_FOUND |"
     echo "| Files Scanned | $FILES_SCANNED |"
     echo "| Scan Duration | $SCAN_DURATION |"
     echo "| Output Format | $OUTPUT_FORMAT |"
     echo ""
     
-    if [ "$VULNERABILITIES_FOUND" != "0" ] && [ "$VULNERABILITIES_FOUND" != "unknown" ]; then
-        echo "⚠️ **Security vulnerabilities detected!** Please review the results."
+    if [ "$FINDINGS_FOUND" != "0" ] && [ "$FINDINGS_FOUND" != "unknown" ]; then
+        echo "**Reliability findings detected.** Please review the results."
         echo ""
-        echo "📄 [View detailed results]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
+        echo "[View detailed results]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
     else
-        echo "✅ **No security vulnerabilities found!**"
+        echo "**No reliability findings found.**"
     fi
 } >> $GITHUB_STEP_SUMMARY
 
 # Determine exit code
-if [ "$FAIL_ON_FINDINGS" = "true" ] && [ "$VULNERABILITIES_FOUND" != "0" ] && [ "$VULNERABILITIES_FOUND" != "unknown" ]; then
-    error "Security vulnerabilities found and fail-on-findings is enabled"
+if [ "$FAIL_ON_FINDINGS" = "true" ] && [ "$FINDINGS_FOUND" != "0" ] && [ "$FINDINGS_FOUND" != "unknown" ]; then
+    error "Reliability findings found and fail-on-findings is enabled"
     exit 1
 elif [ $SCAN_EXIT_CODE -ne 0 ]; then
     error "Scanner failed with exit code $SCAN_EXIT_CODE"

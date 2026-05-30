@@ -7,6 +7,7 @@ from typing import Generator, Optional
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 
@@ -82,16 +83,20 @@ class DatabaseManager:
 
         self._engine = create_engine(connection_url, **engine_kwargs)
 
-        # Set up event listeners for connection management
-        @event.listens_for(self._engine, "connect")
-        def receive_connect(dbapi_conn, connection_record):
-            """Handle new database connections."""
-            logger.debug("New database connection established")
+        try:
+            # Set up event listeners for connection management.
+            @event.listens_for(self._engine, "connect")
+            def receive_connect(dbapi_conn, connection_record):
+                """Handle new database connections."""
+                logger.debug("New database connection established")
 
-        @event.listens_for(self._engine, "close")
-        def receive_close(dbapi_conn, connection_record):
-            """Handle database connection closure."""
-            logger.debug("Database connection closed")
+            @event.listens_for(self._engine, "close")
+            def receive_close(dbapi_conn, connection_record):
+                """Handle database connection closure."""
+                logger.debug("Database connection closed")
+
+        except InvalidRequestError:
+            logger.debug("Skipping database event listeners for non-SQLAlchemy engine")
 
         logger.info(
             f"Database engine created: {self.config.host}:{self.config.port}/{self.config.database}"

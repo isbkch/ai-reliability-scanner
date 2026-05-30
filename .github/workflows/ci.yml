@@ -63,21 +63,21 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
-  security-scan:
-    name: Security Scan
+  reliability-scan:
+    name: Reliability Scan
     runs-on: ubuntu-latest
     needs: test
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Run AI Security Scanner (self-scan)
-        uses: ./
+      - name: Run AI Reliability Scanner (self-scan)
+        uses: ./.github/actions/security-scan
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: ./ai_security_scanner
           output-format: sarif
-          output-file: security-results.sarif
+          output-file: reliability-results.sarif
           enable-ai-analysis: false # Disable AI for CI to avoid API costs
           fail-on-findings: false # Don't fail CI on findings for now
 
@@ -85,7 +85,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: security-results.sarif
+          sarif_file: reliability-results.sarif
 
   build:
     name: Build and Package
@@ -129,7 +129,7 @@ jobs:
         image: postgres:13
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ai_security_scanner_test
+          POSTGRES_DB: ai_reliability_scanner_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -158,19 +158,19 @@ jobs:
 
       - name: Test CLI functionality
         run: |
-          ai-security-scanner --help
-          ai-security-scanner config-info
-          ai-security-scanner scan examples/ --output json --no-ai
+          ai-reliability-scanner --help
+          ai-reliability-scanner config-info
+          ai-reliability-scanner scan examples/ --output json --no-ai
 
-      - name: Test vulnerable code detection
+      - name: Test reliability finding detection
         run: |
-          ai-security-scanner scan examples/vulnerable_code.py --output json --no-ai | jq '.vulnerabilities | length'
-          ai-security-scanner scan examples/vulnerable_code.js --output json --no-ai | jq '.vulnerabilities | length'
+          ai-reliability-scanner scan examples/unreliable_service.py --output json --no-ai | jq '.findings | length'
+          ai-reliability-scanner scan examples/unreliable_service.js --output json --no-ai | jq '.findings | length'
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [test, security-scan, build, integration-test]
+    needs: [test, reliability-scan, build, integration-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -229,7 +229,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ai-security-scanner/scanner
+          images: ai-reliability-scanner/scanner
           tags: |
             type=ref,event=branch
             type=ref,event=pr

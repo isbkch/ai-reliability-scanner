@@ -32,3 +32,4 @@ ai_security_scanner/core/patterns/__pycache__
 ai_security_scanner/integrations/__pycache__
 ai_security_scanner/models/__pycache__
 CLAUDE.md
+AGENTS.md

@@ -63,7 +63,7 @@ class TestDatabaseManager:
             assert "postgresql://" in url
             assert "test_user:testpass" in url
             assert "localhost:5432" in url
-            assert "test_ai_security_scanner" in url
+        assert "test_ai_security_scanner" in url
 
     def test_create_engine(self, db_config):
         """Test engine creation."""
@@ -179,7 +179,7 @@ class TestScanRepository:
         assert updated_scan.low_count == 3
 
     def test_add_vulnerability(self, db_session):
-        """Test adding a vulnerability to a scan."""
+        """Test adding a finding to a scan."""
         repo = ScanRepository(db_session)
 
         # Create scan
@@ -190,26 +190,25 @@ class TestScanRepository:
         )
         db_session.commit()
 
-        # Add vulnerability
+        # Add finding
         vuln = repo.add_vulnerability(
             scan_id="test-scan-vuln",
-            vulnerability_type="SQL Injection",
+            vulnerability_type="missing_http_timeout_python",
             severity=Severity.HIGH,
             confidence=Confidence.HIGH,
-            description="SQL injection vulnerability found",
+            description="HTTP call without timeout",
             file_path="/test/file.py",
             line_number=42,
-            cwe_id="CWE-89",
         )
 
         assert vuln is not None
-        assert vuln.vulnerability_type == "SQL Injection"
+        assert vuln.vulnerability_type == "missing_http_timeout_python"
         assert vuln.severity == Severity.HIGH
         assert vuln.confidence == Confidence.HIGH
         assert vuln.line_number == 42
 
     def test_get_vulnerabilities_by_scan(self, db_session):
-        """Test retrieving vulnerabilities for a scan."""
+        """Test retrieving findings for a scan."""
         repo = ScanRepository(db_session)
 
         # Create scan
@@ -220,39 +219,37 @@ class TestScanRepository:
         )
         db_session.commit()
 
-        # Add multiple vulnerabilities
+        # Add multiple findings
         repo.add_vulnerability(
             scan_id="test-scan-vulns",
-            vulnerability_type="XSS",
+            vulnerability_type="service_without_health_check",
             severity=Severity.MEDIUM,
             confidence=Confidence.HIGH,
-            description="XSS vulnerability",
+            description="Service without health check",
             file_path="/test/file1.js",
         )
 
         repo.add_vulnerability(
             scan_id="test-scan-vulns",
-            vulnerability_type="CSRF",
+            vulnerability_type="missing_http_timeout_python",
             severity=Severity.HIGH,
             confidence=Confidence.MEDIUM,
-            description="CSRF vulnerability",
+            description="HTTP call without timeout",
             file_path="/test/file2.js",
         )
 
         db_session.commit()
 
-        # Retrieve all vulnerabilities
+        # Retrieve all findings
         vulns = repo.get_vulnerabilities_by_scan("test-scan-vulns")
 
         assert len(vulns) == 2
 
         # Filter by severity
-        high_vulns = repo.get_vulnerabilities_by_scan(
-            "test-scan-vulns", severity=Severity.HIGH
-        )
+        high_vulns = repo.get_vulnerabilities_by_scan("test-scan-vulns", severity=Severity.HIGH)
 
         assert len(high_vulns) == 1
-        assert high_vulns[0].vulnerability_type == "CSRF"
+        assert high_vulns[0].vulnerability_type == "missing_http_timeout_python"
 
     def test_get_scan_statistics(self, db_session):
         """Test retrieving aggregated scan statistics."""
@@ -278,7 +275,7 @@ class TestScanRepository:
         stats = repo.get_scan_statistics()
 
         assert stats["total_scans"] == 3
-        assert stats["total_vulnerabilities"] == 15  # 5 + 10 + 15
+        assert stats["total_vulnerabilities"] == 30  # 5 + 10 + 15
         assert stats["total_files_scanned"] == 60  # 10 + 20 + 30
 
 
@@ -299,20 +296,21 @@ class TestScanPersistenceService:
 
         vulnerabilities = [
             VulnerabilityResult(
-                vulnerability_type="SQL Injection",
+                id="finding-1",
+                vulnerability_type="missing_http_timeout_python",
+                title="HTTP call without timeout",
                 severity=Severity.HIGH,
                 confidence=Confidence.HIGH,
-                description="SQL injection found",
-                file_path="/test/file.py",
+                description="HTTP call without timeout",
                 location=Location(
                     file_path="/test/file.py",
-                    start_line=10,
-                    start_column=1,
-                    end_line=10,
-                    end_column=50,
+                    line_number=10,
+                    column_number=1,
+                    end_line_number=10,
+                    end_column_number=50,
                 ),
-                code_snippet="query = 'SELECT * FROM users WHERE id=' + user_id",
-                cwe_id="CWE-89",
+                code_snippet="requests.get(url)",
+                remediation="Pass timeout=...",
             )
         ]
 
@@ -328,7 +326,12 @@ class TestScanPersistenceService:
             files_scanned=5,
             total_lines_scanned=500,
             scanner_version="1.0.0",
-            configuration={"scanner": {"enable_ai_analysis": True, "patterns": ["owasp-top-10"]}},
+            configuration={
+                "scanner": {
+                    "enable_ai_analysis": True,
+                    "patterns": ["reliability-readiness"],
+                }
+            },
             metrics={},
         )
 
@@ -349,7 +352,7 @@ class TestScanPersistenceService:
             # Verify vulnerability was saved
             vulns = repo.get_vulnerabilities_by_scan("test-service-scan")
             assert len(vulns) == 1
-            assert vulns[0].vulnerability_type == "SQL Injection"
+            assert vulns[0].vulnerability_type == "missing_http_timeout_python"
 
     def test_get_recent_scans(self, in_memory_engine):
         """Test retrieving recent scans."""

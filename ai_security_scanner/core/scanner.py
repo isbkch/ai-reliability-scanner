@@ -1,4 +1,4 @@
-"""Core security scanner implementation."""
+"""Core reliability scanner implementation."""
 
 import asyncio
 import hashlib
@@ -21,7 +21,7 @@ from ai_security_scanner.core.models import (
     VulnerabilityResult,
 )
 from ai_security_scanner.core.patterns.base import VulnerabilityPattern
-from ai_security_scanner.core.patterns.owasp_top10 import get_owasp_top10_patterns
+from ai_security_scanner.core.patterns.reliability import get_reliability_patterns
 from ai_security_scanner.utils.file_utils import FileScanner
 from ai_security_scanner.utils.language_detector import LanguageDetector
 
@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 class SecurityScanner:
-    """Main security scanner class."""
+    """Main reliability scanner class."""
 
     def __init__(self, config: Optional[Config] = None):
-        """Initialize the security scanner.
+        """Initialize the reliability scanner.
 
         Args:
             config: Scanner configuration. If None, loads from environment.
@@ -55,20 +55,21 @@ class SecurityScanner:
         self.stats_lock = Lock()
 
     def _load_patterns(self) -> None:
-        """Load vulnerability patterns based on configuration."""
-        if "owasp-top-10" in self.config.scanner.patterns:
-            self.patterns.extend(get_owasp_top10_patterns())
+        """Load reliability patterns based on configuration."""
+        reliability_names = {"reliability", "reliability-readiness", "production-readiness"}
+        if reliability_names.intersection(self.config.scanner.patterns):
+            self.patterns.extend(get_reliability_patterns())
 
-        logger.info(f"Loaded {len(self.patterns)} vulnerability patterns")
+        logger.info(f"Loaded {len(self.patterns)} reliability patterns")
 
     def scan_file(self, file_path: str) -> List[VulnerabilityResult]:
-        """Scan a single file for vulnerabilities.
+        """Scan a single file for reliability risks.
 
         Args:
             file_path: Path to the file to scan
 
         Returns:
-            List of vulnerability results
+            List of reliability findings
         """
         try:
             file_path_obj = Path(file_path)
@@ -128,7 +129,7 @@ class SecurityScanner:
     def _scan_with_patterns(
         self, content: str, file_path: str, context: AnalysisContext
     ) -> List[VulnerabilityResult]:
-        """Scan content with loaded patterns.
+        """Scan content with loaded reliability patterns.
 
         Args:
             content: File content to scan
@@ -136,7 +137,7 @@ class SecurityScanner:
             context: Analysis context
 
         Returns:
-            List of vulnerability results
+            List of reliability findings
         """
         vulnerabilities = []
 
@@ -168,7 +169,7 @@ class SecurityScanner:
         return mapping.get(confidence, 0.5)
 
     def scan_directory(self, directory_path: str) -> ScanResult:
-        """Scan a directory for vulnerabilities.
+        """Scan a directory for reliability risks.
 
         Args:
             directory_path: Path to directory to scan
@@ -227,7 +228,7 @@ class SecurityScanner:
         )
 
         logger.info(
-            f"Scan completed: {len(all_vulnerabilities)} vulnerabilities found in {scan_duration:.2f}s"
+            f"Scan completed: {len(all_vulnerabilities)} reliability findings in {scan_duration:.2f}s"
         )
 
         return scan_result
@@ -235,7 +236,7 @@ class SecurityScanner:
     def scan_code(
         self, code: str, language: str, file_path: str = "inline"
     ) -> List[VulnerabilityResult]:
-        """Scan code string for vulnerabilities.
+        """Scan code string for reliability risks.
 
         Args:
             code: Source code to scan
@@ -243,7 +244,7 @@ class SecurityScanner:
             file_path: Virtual file path for the code
 
         Returns:
-            List of vulnerability results
+            List of reliability findings
         """
         if language not in self.config.scanner.languages:
             raise ValueError(f"Language {language} not supported")
@@ -255,14 +256,14 @@ class SecurityScanner:
     async def _scan_file_async(
         self, file_path: str, semaphore: asyncio.Semaphore
     ) -> List[VulnerabilityResult]:
-        """Asynchronously scan a single file for vulnerabilities.
+        """Asynchronously scan a single file for reliability risks.
 
         Args:
             file_path: Path to the file to scan
             semaphore: Semaphore to limit concurrent operations
 
         Returns:
-            List of vulnerability results
+            List of reliability findings
         """
         async with semaphore:
             try:
@@ -322,7 +323,7 @@ class SecurityScanner:
                 return []
 
     async def scan_directory_async(self, directory_path: str) -> ScanResult:
-        """Asynchronously scan a directory for vulnerabilities.
+        """Asynchronously scan a directory for reliability risks.
 
         Args:
             directory_path: Path to directory to scan
@@ -364,7 +365,7 @@ class SecurityScanner:
         # Wait for all scans to complete
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Collect all vulnerabilities
+        # Collect all findings.
         all_vulnerabilities = []
         for result in results:
             if isinstance(result, list):
@@ -394,7 +395,7 @@ class SecurityScanner:
         )
 
         logger.info(
-            f"Scan completed: {len(all_vulnerabilities)} vulnerabilities found in {scan_duration:.2f}s"
+            f"Scan completed: {len(all_vulnerabilities)} reliability findings in {scan_duration:.2f}s"
         )
 
         return scan_result
@@ -404,20 +405,20 @@ class SecurityScanner:
         return self.config.scanner.languages.copy()
 
     def get_loaded_patterns(self) -> List[str]:
-        """Get list of loaded vulnerability patterns."""
+        """Get list of loaded reliability patterns."""
         return [pattern.name for pattern in self.patterns]
 
     def add_pattern(self, pattern: VulnerabilityPattern) -> None:
-        """Add a custom vulnerability pattern.
+        """Add a custom reliability pattern.
 
         Args:
-            pattern: Vulnerability pattern to add
+            pattern: Reliability pattern to add
         """
         self.patterns.append(pattern)
         logger.info(f"Added custom pattern: {pattern.name}")
 
     def remove_pattern(self, pattern_name: str) -> bool:
-        """Remove a vulnerability pattern by name.
+        """Remove a reliability pattern by name.
 
         Args:
             pattern_name: Name of pattern to remove

@@ -1,4 +1,4 @@
-"""LLM-powered vulnerability analyzer."""
+"""LLM-powered reliability finding analyzer."""
 
 import asyncio
 import logging
@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class VulnerabilityAnalyzer:
-    """LLM-powered vulnerability analyzer for enhanced detection and false positive reduction."""
+    """LLM-powered reliability analyzer for enhanced detection and false positive reduction."""
 
     def __init__(self, config: Optional[Config] = None):
-        """Initialize vulnerability analyzer.
+        """Initialize reliability analyzer.
 
         Args:
             config: Configuration object
@@ -52,15 +52,15 @@ class VulnerabilityAnalyzer:
     async def analyze_vulnerabilities(
         self, vulnerabilities: List[VulnerabilityResult], source_code: str, context: Dict[str, Any]
     ) -> List[VulnerabilityResult]:
-        """Analyze vulnerabilities with LLM enhancement.
+        """Analyze findings with LLM enhancement.
 
         Args:
-            vulnerabilities: List of detected vulnerabilities
+            vulnerabilities: List of detected reliability findings
             source_code: Full source code for context
             context: Additional context information
 
         Returns:
-            Enhanced vulnerability results
+            Enhanced reliability findings
         """
         if not self.config.scanner.enable_ai_analysis:
             return vulnerabilities
@@ -78,7 +78,7 @@ class VulnerabilityAnalyzer:
 
         enhanced_vulnerabilities = []
 
-        # Process vulnerabilities concurrently with limited batch size
+        # Process findings concurrently with limited batch size
         batch_size = 5  # Limit concurrent LLM requests
         for i in range(0, len(vulnerabilities), batch_size):
             batch = vulnerabilities[i : i + batch_size]
@@ -93,7 +93,7 @@ class VulnerabilityAnalyzer:
             # Handle results and exceptions
             for result in enhanced_batch:
                 if isinstance(result, Exception):
-                    logger.error(f"Error in vulnerability analysis: {result}")
+                    logger.error(f"Error in reliability analysis: {result}")
                     continue
                 if result:  # Only add non-None results
                     enhanced_vulnerabilities.append(result)
@@ -103,18 +103,18 @@ class VulnerabilityAnalyzer:
     async def _analyze_single_vulnerability(
         self, vulnerability: VulnerabilityResult, source_code: str, context: Dict[str, Any]
     ) -> Optional[VulnerabilityResult]:
-        """Analyze a single vulnerability with LLM.
+        """Analyze a single finding with LLM.
 
         Args:
-            vulnerability: Vulnerability to analyze
+            vulnerability: Finding to analyze
             source_code: Full source code
             context: Additional context
 
         Returns:
-            Enhanced vulnerability result or None if filtered out
+            Enhanced finding result or None if filtered out
         """
         try:
-            # Extract code snippet around vulnerability
+            # Extract code snippet around finding
             code_snippet = self._extract_code_snippet(
                 source_code, vulnerability.location.line_number, context_lines=10
             )
@@ -156,24 +156,27 @@ class VulnerabilityAnalyzer:
                     and enhanced_vulnerability.false_positive_likelihood > 0.8
                 ):
                     logger.info(
-                        f"Filtering out likely false positive: {vulnerability.vulnerability_type} at {vulnerability.location.file_path}:{vulnerability.location.line_number}"
+                        "Filtering out likely false positive: "
+                        f"{vulnerability.vulnerability_type} at "
+                        f"{vulnerability.location.file_path}:"
+                        f"{vulnerability.location.line_number}"
                     )
                     return None
 
             return enhanced_vulnerability
 
         except Exception as e:
-            logger.error(f"Error analyzing vulnerability {vulnerability.id}: {e}")
-            return vulnerability  # Return original vulnerability if analysis fails
+            logger.error(f"Error analyzing finding {vulnerability.id}: {e}")
+            return vulnerability  # Return original finding if analysis fails
 
     def _extract_code_snippet(
         self, source_code: str, line_number: int, context_lines: int = 5
     ) -> str:
-        """Extract code snippet with context around the vulnerability.
+        """Extract code snippet with context around the finding.
 
         Args:
             source_code: Full source code
-            line_number: Line number of vulnerability
+            line_number: Line number of finding
             context_lines: Number of context lines to include
 
         Returns:
@@ -197,17 +200,17 @@ class VulnerabilityAnalyzer:
         analysis: Dict[str, Any],
         false_positive_check: Dict[str, Any],
     ) -> VulnerabilityResult:
-        """Enhance vulnerability with LLM analysis results.
+        """Enhance finding with LLM analysis results.
 
         Args:
-            vulnerability: Original vulnerability
+            vulnerability: Original finding
             analysis: LLM analysis results
             false_positive_check: False positive check results
 
         Returns:
-            Enhanced vulnerability result
+            Enhanced finding result
         """
-        # Create enhanced vulnerability copy
+        # Create enhanced finding copy
         enhanced = VulnerabilityResult(
             id=vulnerability.id,
             vulnerability_type=vulnerability.vulnerability_type,
@@ -252,7 +255,9 @@ class VulnerabilityAnalyzer:
                     "provider": self.config.llm.provider,
                     "model": self.config.llm.model,
                     "analysis_timestamp": datetime.now().isoformat(),
-                    "attack_vectors": analysis.get("attack_vectors", []),
+                    "failure_scenarios": analysis.get(
+                        "failure_scenarios", analysis.get("attack_vectors", [])
+                    ),
                     "impact": analysis.get("impact", ""),
                     "false_positive_likelihood": enhanced.false_positive_likelihood,
                     "llm_confidence": analysis.get("confidence", "UNKNOWN"),
@@ -287,15 +292,15 @@ class VulnerabilityAnalyzer:
         all_vulnerabilities: List[VulnerabilityResult],
         threshold: float = 0.8,
     ) -> List[VulnerabilityResult]:
-        """Find similar vulnerabilities using embeddings.
+        """Find similar findings using embeddings.
 
         Args:
-            target_vulnerability: Target vulnerability to find similarities for
-            all_vulnerabilities: All vulnerabilities to search through
+            target_vulnerability: Target finding to find similarities for
+            all_vulnerabilities: All findings to search through
             threshold: Similarity threshold
 
         Returns:
-            List of similar vulnerabilities
+            List of similar findings
         """
         if not self.embedder:
             return []
@@ -314,7 +319,7 @@ class VulnerabilityAnalyzer:
                 target_code, other_codes, threshold=threshold
             )
 
-            # Map back to vulnerabilities
+            # Map back to findings
             similar_vulnerabilities = []
             for similar_code, similarity_score in similar_codes:
                 for vuln in all_vulnerabilities:
@@ -327,7 +332,7 @@ class VulnerabilityAnalyzer:
             return similar_vulnerabilities
 
         except Exception as e:
-            logger.error(f"Error finding similar vulnerabilities: {e}")
+            logger.error(f"Error finding similar findings: {e}")
             return []
 
     def get_analysis_stats(self) -> Dict[str, Any]:

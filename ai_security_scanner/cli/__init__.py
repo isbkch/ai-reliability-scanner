@@ -1,1 +1,1 @@
-"""CLI module for the AI Security Scanner."""
+"""CLI module for the AI Reliability Scanner."""

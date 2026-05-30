@@ -1,4 +1,4 @@
-"""Database package for AI Security Scanner."""
+"""Database package for AI Reliability Scanner."""
 
 from ai_security_scanner.database.connection import (
     DatabaseManager,

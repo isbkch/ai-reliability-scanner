@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
 )
@@ -27,7 +28,7 @@ Base = declarative_base()
 
 
 class ScanRecord(Base):
-    """Record of a security scan."""
+    """Record of a reliability scan."""
 
     __tablename__ = "scan_records"
 
@@ -83,14 +84,17 @@ class ScanRecord(Base):
 
 
 class VulnerabilityRecord(Base):
-    """Record of a detected vulnerability."""
+    """Record of a detected reliability finding.
+
+    The class and table names are retained for compatibility with existing migrations.
+    """
 
     __tablename__ = "vulnerability_records"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scan_id = Column(UUID(as_uuid=True), ForeignKey("scan_records.id"), nullable=False, index=True)
 
-    # Vulnerability details
+    # Finding details
     vulnerability_type = Column(String(100), nullable=False)
     severity = Column(SAEnum(Severity), nullable=False, index=True)
     confidence = Column(SAEnum(Confidence), nullable=False)
@@ -171,7 +175,10 @@ class ScanComparison(Base):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ScanComparison(trend='{self.overall_trend}', new={self.new_vulnerabilities}, fixed={self.fixed_vulnerabilities})>"
+        return (
+            f"<ScanComparison(trend='{self.overall_trend}', "
+            f"new={self.new_vulnerabilities}, fixed={self.fixed_vulnerabilities})>"
+        )
 
 
 class PatternUsage(Base):

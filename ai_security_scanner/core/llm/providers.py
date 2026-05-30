@@ -1,4 +1,4 @@
-"""LLM providers for vulnerability analysis."""
+"""LLM providers for reliability finding analysis."""
 
 import asyncio
 import logging
@@ -29,11 +29,11 @@ class LLMProvider(ABC):
     async def analyze_vulnerability(
         self, code: str, vulnerability_type: str, context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Analyze vulnerability and provide explanation.
+        """Analyze finding and provide explanation.
 
         Args:
             code: Source code snippet
-            vulnerability_type: Type of vulnerability
+            vulnerability_type: Type of finding
             context: Additional context information
 
         Returns:
@@ -45,11 +45,11 @@ class LLMProvider(ABC):
     async def check_false_positive(
         self, code: str, vulnerability_description: str, context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Check if vulnerability is a false positive.
+        """Check if a finding is a false positive.
 
         Args:
             code: Source code snippet
-            vulnerability_description: Description of the vulnerability
+            vulnerability_description: Description of the finding
             context: Additional context information
 
         Returns:
@@ -70,31 +70,31 @@ class LLMProvider(ABC):
         self.request_count += 1
 
     def _create_system_prompt(self) -> str:
-        """Create system prompt for vulnerability analysis."""
-        return """You are a cybersecurity expert specializing in code analysis and vulnerability detection.
+        """Create system prompt for reliability finding analysis."""
+        return """You are a production reliability expert reviewing generated service code.
 
 Your role is to:
-1. Analyze code snippets for security vulnerabilities
-2. Provide clear, actionable explanations of security issues
+1. Analyze code snippets for production-readiness and reliability risks
+2. Provide clear, actionable explanations of operational failure modes
 3. Suggest specific remediation steps
 4. Assess whether detected issues are false positives
-5. Consider the context and real-world impact of vulnerabilities
+5. Consider the context and real-world impact of reliability risks
 
 Guidelines:
 - Be precise and technical in your analysis
-- Focus on actionable security advice
-- Consider both immediate and long-term security implications
-- Explain the potential attack vectors and impact
+- Focus on actionable reliability advice
+- Consider deploy, dependency, load, retry, and incident behavior
+- Explain the potential outage modes and customer impact
 - Provide specific code examples for remediation when possible
 - Be honest about uncertainty - if you're not sure, say so
 
 Response format should be JSON with the following structure:
 {
-    "analysis": "detailed analysis of the vulnerability",
+    "analysis": "detailed analysis of the reliability risk",
     "severity_assessment": "LOW|MEDIUM|HIGH|CRITICAL",
     "false_positive_likelihood": 0.0-1.0,
     "remediation": "specific steps to fix the issue",
-    "attack_vectors": ["list of potential attack vectors"],
+    "failure_scenarios": ["list of potential outage or degradation scenarios"],
     "impact": "description of potential impact",
     "confidence": "LOW|MEDIUM|HIGH"
 }"""
@@ -102,11 +102,11 @@ Response format should be JSON with the following structure:
     def _create_vulnerability_analysis_prompt(
         self, code: str, vulnerability_type: str, context: Dict[str, Any]
     ) -> str:
-        """Create prompt for vulnerability analysis.
+        """Create prompt for reliability finding analysis.
 
         Args:
             code: Source code snippet
-            vulnerability_type: Type of vulnerability
+            vulnerability_type: Type of finding
             context: Additional context
 
         Returns:
@@ -115,7 +115,7 @@ Response format should be JSON with the following structure:
         language = context.get("language", "unknown")
         file_path = context.get("file_path", "unknown")
 
-        return f"""Analyze this code snippet for a potential {vulnerability_type} vulnerability:
+        return f"""Analyze this code snippet for a potential {vulnerability_type} reliability risk:
 
 **Code (Language: {language}):**
 ```{language}
@@ -127,16 +127,17 @@ Response format should be JSON with the following structure:
 **Context:**
 {self._format_context(context)}
 
-**Vulnerability Type:** {vulnerability_type}
+**Finding Type:** {vulnerability_type}
 
 Please provide a detailed analysis focusing on:
-1. Whether this is actually a vulnerability
+1. Whether this is actually a production-readiness risk
 2. The severity and potential impact
-3. Specific attack scenarios
+3. Specific outage or degradation scenarios
 4. Exact remediation steps with code examples
 5. Your confidence level in this assessment
 
-Be especially careful to avoid false positives - consider the full context and whether the code is actually exploitable."""
+Be especially careful to avoid false positives - consider whether the code has equivalent
+reliability controls elsewhere in scope."""
 
     def _create_false_positive_check_prompt(
         self, code: str, vulnerability_description: str, context: Dict[str, Any]
@@ -145,7 +146,7 @@ Be especially careful to avoid false positives - consider the full context and w
 
         Args:
             code: Source code snippet
-            vulnerability_description: Description of vulnerability
+            vulnerability_description: Description of finding
             context: Additional context
 
         Returns:
@@ -153,23 +154,23 @@ Be especially careful to avoid false positives - consider the full context and w
         """
         language = context.get("language", "unknown")
 
-        return f"""Review this potential vulnerability detection and assess if it's a false positive:
+        return f"""Review this potential reliability finding and assess if it's a false positive:
 
 **Code (Language: {language}):**
 ```{language}
 {code}
 ```
 
-**Vulnerability Description:** {vulnerability_description}
+**Finding Description:** {vulnerability_description}
 
 **Context:**
 {self._format_context(context)}
 
 Please analyze whether this is a false positive by considering:
-1. Is the code actually vulnerable in a real-world scenario?
-2. Are there mitigating factors that prevent exploitation?
-3. Is the vulnerable code path actually reachable?
-4. Are there input sanitization or validation mechanisms?
+1. Is the code actually risky in a real-world production scenario?
+2. Are there mitigating controls that prevent outage or degradation?
+3. Is the risky code path actually reachable under production load?
+4. Are there timeouts, backpressure, shutdown, or observability controls nearby?
 5. Is this a test file or example code?
 
 Provide your assessment with a confidence score and detailed reasoning."""
@@ -198,7 +199,7 @@ Provide your assessment with a confidence score and detailed reasoning."""
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI GPT provider for vulnerability analysis."""
+    """OpenAI GPT provider for reliability analysis."""
 
     def __init__(self, config: Config):
         """Initialize OpenAI provider.
@@ -222,11 +223,11 @@ class OpenAIProvider(LLMProvider):
     async def analyze_vulnerability(
         self, code: str, vulnerability_type: str, context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Analyze vulnerability using OpenAI GPT.
+        """Analyze finding using OpenAI GPT.
 
         Args:
             code: Source code snippet
-            vulnerability_type: Type of vulnerability
+            vulnerability_type: Type of finding
             context: Additional context information
 
         Returns:
@@ -259,7 +260,7 @@ class OpenAIProvider(LLMProvider):
             return json.loads(result)
 
         except Exception as e:
-            logger.error(f"Error in OpenAI vulnerability analysis: {e}")
+            logger.error(f"Error in OpenAI reliability analysis: {e}")
             return self._create_error_response(str(e))
 
     async def check_false_positive(
@@ -269,7 +270,7 @@ class OpenAIProvider(LLMProvider):
 
         Args:
             code: Source code snippet
-            vulnerability_description: Description of vulnerability
+            vulnerability_description: Description of finding
             context: Additional context information
 
         Returns:
@@ -319,7 +320,7 @@ class OpenAIProvider(LLMProvider):
             "severity_assessment": "UNKNOWN",
             "false_positive_likelihood": 0.5,
             "remediation": "Unable to provide remediation due to analysis error",
-            "attack_vectors": [],
+            "failure_scenarios": [],
             "impact": "Unknown due to analysis error",
             "confidence": "LOW",
             "error": error_message,
@@ -327,7 +328,7 @@ class OpenAIProvider(LLMProvider):
 
 
 class AnthropicProvider(LLMProvider):
-    """Anthropic Claude provider for vulnerability analysis."""
+    """Anthropic Claude provider for reliability analysis."""
 
     def __init__(self, config: Config):
         """Initialize Anthropic provider.
@@ -349,11 +350,11 @@ class AnthropicProvider(LLMProvider):
     async def analyze_vulnerability(
         self, code: str, vulnerability_type: str, context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Analyze vulnerability using Anthropic Claude.
+        """Analyze finding using Anthropic Claude.
 
         Args:
             code: Source code snippet
-            vulnerability_type: Type of vulnerability
+            vulnerability_type: Type of finding
             context: Additional context information
 
         Returns:
@@ -383,7 +384,7 @@ class AnthropicProvider(LLMProvider):
             return json.loads(result)
 
         except Exception as e:
-            logger.error(f"Error in Anthropic vulnerability analysis: {e}")
+            logger.error(f"Error in Anthropic reliability analysis: {e}")
             return self._create_error_response(str(e))
 
     async def check_false_positive(
@@ -393,7 +394,7 @@ class AnthropicProvider(LLMProvider):
 
         Args:
             code: Source code snippet
-            vulnerability_description: Description of vulnerability
+            vulnerability_description: Description of finding
             context: Additional context information
 
         Returns:
@@ -440,7 +441,7 @@ class AnthropicProvider(LLMProvider):
             "severity_assessment": "UNKNOWN",
             "false_positive_likelihood": 0.5,
             "remediation": "Unable to provide remediation due to analysis error",
-            "attack_vectors": [],
+            "failure_scenarios": [],
             "impact": "Unknown due to analysis error",
             "confidence": "LOW",
             "error": error_message,

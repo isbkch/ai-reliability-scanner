@@ -1,6 +1,6 @@
-name: 'AI Security Scanner'
-description: 'AI-powered code security scanner with LLM-enhanced vulnerability detection'
-author: 'AI Security Scanner Contributors'
+name: 'AI Reliability Scanner'
+description: 'AI-powered production-readiness scanner for reliability risks'
+author: 'AI Reliability Scanner Contributors'
 
 branding:
   icon: 'shield'
@@ -25,7 +25,7 @@ inputs:
   output-file:
     description: 'Output file path'
     required: false
-    default: 'security-results.sarif'
+    default: 'reliability-results.sarif'
   
   severity-threshold:
     description: 'Minimum severity level (LOW, MEDIUM, HIGH, CRITICAL)'
@@ -57,18 +57,21 @@ inputs:
     required: false
   
   fail-on-findings:
-    description: 'Fail the action if vulnerabilities are found'
+    description: 'Fail the action if reliability findings are found'
     required: false
     default: 'true'
   
   upload-sarif:
-    description: 'Upload SARIF results to GitHub Security tab'
+    description: 'Upload SARIF results to GitHub code scanning'
     required: false
     default: 'true'
 
 outputs:
+  findings-found:
+    description: 'Number of reliability findings found'
+
   vulnerabilities-found:
-    description: 'Number of vulnerabilities found'
+    description: 'Legacy alias for findings-found'
   
   scan-duration:
     description: 'Scan duration in seconds'
@@ -84,8 +87,8 @@ runs:
   image: 'Dockerfile'
   env:
     GITHUB_TOKEN: ${{ inputs.token }}
-    AI_SCANNER_LLM_PROVIDER: ${{ inputs.llm-provider }}
-    AI_SCANNER_LLM_MODEL: ${{ inputs.llm-model }}
+    AI_RELIABILITY_SCANNER_LLM_PROVIDER: ${{ inputs.llm-provider }}
+    AI_RELIABILITY_SCANNER_LLM_MODEL: ${{ inputs.llm-model }}
     OPENAI_API_KEY: ${{ inputs.api-key }}
     ANTHROPIC_API_KEY: ${{ inputs.api-key }}
   args:

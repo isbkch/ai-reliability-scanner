@@ -1,4 +1,4 @@
-"""Base classes for vulnerability patterns."""
+"""Base classes for scanner patterns."""
 
 import re
 from abc import ABC, abstractmethod
@@ -10,7 +10,7 @@ from ai_security_scanner.core.models import Confidence, Location, Severity, Vuln
 
 
 class PatternType(Enum):
-    """Types of vulnerability patterns."""
+    """Types of scanner patterns."""
 
     REGEX = "regex"
     AST = "ast"
@@ -46,7 +46,10 @@ class PatternRule:
 
 
 class VulnerabilityPattern(ABC):
-    """Base class for vulnerability detection patterns."""
+    """Base class for finding detection patterns.
+
+    The class name is retained for compatibility with the original scanner API.
+    """
 
     def __init__(
         self, name: str, description: str, severity: Severity, cwe_id: Optional[str] = None
@@ -60,7 +63,7 @@ class VulnerabilityPattern(ABC):
 
     @abstractmethod
     def detect(self, code: str, file_path: str, language: str) -> List[VulnerabilityResult]:
-        """Detect vulnerabilities in the given code."""
+        """Detect findings in the given code."""
         pass
 
     def add_rule(self, rule: PatternRule) -> None:
@@ -80,7 +83,7 @@ class VulnerabilityPattern(ABC):
         match_text: str = "",
         additional_context: Optional[Dict[str, Any]] = None,
     ) -> VulnerabilityResult:
-        """Create a vulnerability result from a pattern rule."""
+        """Create a finding result from a pattern rule."""
         import uuid
 
         metadata = rule.metadata.copy()
@@ -154,10 +157,10 @@ class VulnerabilityPattern(ABC):
 
 
 class RegexPattern(VulnerabilityPattern):
-    """Regex-based vulnerability pattern."""
+    """Regex-based finding pattern."""
 
     def detect(self, code: str, file_path: str, language: str) -> List[VulnerabilityResult]:
-        """Detect vulnerabilities using regex patterns."""
+        """Detect findings using regex patterns."""
         if not self.is_supported_language(language):
             return []
 
@@ -172,10 +175,10 @@ class RegexPattern(VulnerabilityPattern):
 
 
 class ASTPattern(VulnerabilityPattern):
-    """AST-based vulnerability pattern."""
+    """AST-based finding pattern."""
 
     def detect(self, code: str, file_path: str, language: str) -> List[VulnerabilityResult]:
-        """Detect vulnerabilities using AST analysis."""
+        """Detect findings using AST analysis."""
         if not self.is_supported_language(language):
             return []
 
@@ -185,10 +188,10 @@ class ASTPattern(VulnerabilityPattern):
 
 
 class SemanticPattern(VulnerabilityPattern):
-    """Semantic analysis-based vulnerability pattern."""
+    """Semantic analysis-based finding pattern."""
 
     def detect(self, code: str, file_path: str, language: str) -> List[VulnerabilityResult]:
-        """Detect vulnerabilities using semantic analysis."""
+        """Detect findings using semantic analysis."""
         if not self.is_supported_language(language):
             return []
 

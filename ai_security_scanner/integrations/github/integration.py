@@ -48,7 +48,7 @@ class GitHubIntegration:
         self.analyzer = VulnerabilityAnalyzer(config) if config.scanner.enable_ai_analysis else None
 
     async def scan_repository(self, repo_name: str, branch: Optional[str] = None) -> ScanResult:
-        """Scan a GitHub repository for vulnerabilities.
+        """Scan a GitHub repository for reliability risks.
 
         Args:
             repo_name: Repository name in format "owner/repo"
@@ -88,7 +88,7 @@ class GitHubIntegration:
 
                 # Run AI analysis if enabled
                 if self.analyzer and scan_result.vulnerabilities:
-                    logger.info("Running AI analysis on detected vulnerabilities")
+                    logger.info("Running AI analysis on detected reliability findings")
 
                     context = {
                         "repository": repo_name,
@@ -101,7 +101,7 @@ class GitHubIntegration:
                         ),
                     }
 
-                    # Get source code for context (from first file with vulnerabilities)
+                    # Get source code for context from the first file with findings.
                     source_code = ""
                     if scan_result.vulnerabilities:
                         first_vuln_file = scan_result.vulnerabilities[0].location.file_path
@@ -247,14 +247,14 @@ class GitHubIntegration:
 
             # Create check run
             check_run = repo.create_check_run(
-                name="AI Security Scanner",
+                name="AI Reliability Scanner",
                 head_sha=commit_sha,
                 status="completed",
                 conclusion=self._get_check_conclusion(scan_result),
                 started_at=scan_result.scan_timestamp,
                 completed_at=datetime.now(),
                 output={
-                    "title": f"Security Scan Results",
+                    "title": "Reliability Scan Results",
                     "summary": self._create_check_summary(scan_result),
                     "text": self._create_check_details(scan_result),
                 },
@@ -277,7 +277,7 @@ class GitHubIntegration:
         if not scan_result.vulnerabilities:
             return "success"
 
-        # Check for high/critical vulnerabilities
+        # Check for high/critical findings.
         from ai_security_scanner.core.models import Severity
 
         critical_count = sum(
@@ -304,7 +304,7 @@ class GitHubIntegration:
         total_vulns = len(scan_result.vulnerabilities)
 
         if total_vulns == 0:
-            return "✅ No security vulnerabilities found!"
+            return "No reliability risks found."
 
         # Count by severity
         from ai_security_scanner.core.models import Severity
@@ -319,7 +319,7 @@ class GitHubIntegration:
         for vuln in scan_result.vulnerabilities:
             severity_counts[vuln.severity] += 1
 
-        summary_parts = [f"🔍 Found {total_vulns} security issue(s):"]
+        summary_parts = [f"Found {total_vulns} reliability finding(s):"]
 
         if severity_counts[Severity.CRITICAL] > 0:
             summary_parts.append(f"🔴 {severity_counts[Severity.CRITICAL]} Critical")
@@ -342,17 +342,17 @@ class GitHubIntegration:
             Detailed results text
         """
         if not scan_result.vulnerabilities:
-            return "No vulnerabilities detected in the scanned code."
+            return "No reliability risks detected in the scanned code."
 
         details = []
-        details.append(f"## Scan Results")
-        details.append(f"")
+        details.append("## Reliability Scan Results")
+        details.append("")
         details.append(f"- **Files Scanned:** {scan_result.files_scanned}")
         details.append(f"- **Lines Scanned:** {scan_result.total_lines_scanned}")
         details.append(f"- **Scan Duration:** {scan_result.scan_duration:.2f}s")
-        details.append(f"")
+        details.append("")
 
-        # Group vulnerabilities by file
+        # Group findings by file.
         vuln_by_file = {}
         for vuln in scan_result.vulnerabilities:
             file_path = vuln.location.file_path
@@ -360,7 +360,7 @@ class GitHubIntegration:
                 vuln_by_file[file_path] = []
             vuln_by_file[file_path].append(vuln)
 
-        details.append("## Vulnerabilities by File")
+        details.append("## Findings by File")
         details.append("")
 
         for file_path, vulns in vuln_by_file.items():
@@ -368,10 +368,9 @@ class GitHubIntegration:
             details.append("")
 
             for vuln in vulns:
-                severity_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
-
                 details.append(
-                    f"- {severity_emoji.get(vuln.severity.value, '⚪')} **{vuln.vulnerability_type}** (Line {vuln.location.line_number})"
+                    f"- **{vuln.severity.value}: {vuln.vulnerability_type}** "
+                    f"(Line {vuln.location.line_number})"
                 )
                 details.append(f"  - **Severity:** {vuln.severity.value}")
                 details.append(f"  - **Confidence:** {vuln.confidence.value}")

@@ -125,7 +125,7 @@ class ScanRepository:
 
         Args:
             scan_id: Scan identifier
-            total_vulnerabilities: Total number of vulnerabilities found
+            total_vulnerabilities: Total number of findings
             severity_counts: Dictionary mapping severity levels to counts
 
         Returns:
@@ -139,9 +139,7 @@ class ScanRepository:
             scan.medium_count = severity_counts.get("MEDIUM", 0)
             scan.low_count = severity_counts.get("LOW", 0)
 
-            logger.info(
-                f"Updated scan stats for {scan_id}: {total_vulnerabilities} vulnerabilities"
-            )
+            logger.info(f"Updated scan stats for {scan_id}: {total_vulnerabilities} findings")
 
         return scan
 
@@ -156,20 +154,20 @@ class ScanRepository:
         line_number: Optional[int] = None,
         **kwargs,
     ) -> Optional[VulnerabilityRecord]:
-        """Add a vulnerability to a scan.
+        """Add a finding to a scan.
 
         Args:
             scan_id: Scan identifier
-            vulnerability_type: Type of vulnerability
+            vulnerability_type: Type of finding
             severity: Severity level
             confidence: Confidence level
-            description: Vulnerability description
-            file_path: Path to vulnerable file
-            line_number: Line number of vulnerability
-            **kwargs: Additional vulnerability metadata
+            description: Finding description
+            file_path: Path to finding file
+            line_number: Line number of finding
+            **kwargs: Additional finding metadata
 
         Returns:
-            Created VulnerabilityRecord if scan found, None otherwise
+            Created record if scan found, None otherwise
         """
         scan = self.get_scan_by_id(scan_id)
         if not scan:
@@ -190,7 +188,7 @@ class ScanRepository:
         self.session.add(vuln_record)
         self.session.flush()
 
-        logger.debug(f"Added vulnerability to scan {scan_id}: {vulnerability_type}")
+        logger.debug(f"Added finding to scan {scan_id}: {vulnerability_type}")
         return vuln_record
 
     def get_vulnerabilities_by_scan(
@@ -199,7 +197,7 @@ class ScanRepository:
         severity: Optional[Severity] = None,
         status: Optional[str] = None,
     ) -> List[VulnerabilityRecord]:
-        """Get vulnerabilities for a scan.
+        """Get findings for a scan.
 
         Args:
             scan_id: Scan identifier
@@ -207,7 +205,7 @@ class ScanRepository:
             status: Optional filter by status
 
         Returns:
-            List of VulnerabilityRecord instances
+            List of finding records
         """
         scan = self.get_scan_by_id(scan_id)
         if not scan:
@@ -226,13 +224,13 @@ class ScanRepository:
         return query.all()
 
     def get_vulnerability_by_uuid(self, uuid: UUID) -> Optional[VulnerabilityRecord]:
-        """Get vulnerability by UUID.
+        """Get finding by UUID.
 
         Args:
-            uuid: Vulnerability UUID
+            uuid: Finding UUID
 
         Returns:
-            VulnerabilityRecord if found, None otherwise
+            Finding record if found, None otherwise
         """
         return (
             self.session.query(VulnerabilityRecord).filter(VulnerabilityRecord.id == uuid).first()
@@ -245,16 +243,16 @@ class ScanRepository:
         fixed_at: Optional[datetime] = None,
         fixed_in_commit: Optional[str] = None,
     ) -> Optional[VulnerabilityRecord]:
-        """Update vulnerability status.
+        """Update finding status.
 
         Args:
-            vuln_uuid: Vulnerability UUID
+            vuln_uuid: Finding UUID
             status: New status
             fixed_at: Timestamp when fixed
             fixed_in_commit: Commit hash where fixed
 
         Returns:
-            Updated VulnerabilityRecord if found, None otherwise
+            Updated finding record if found, None otherwise
         """
         vuln = self.get_vulnerability_by_uuid(vuln_uuid)
         if vuln:
@@ -264,7 +262,7 @@ class ScanRepository:
             if fixed_in_commit:
                 vuln.fixed_in_commit = fixed_in_commit
 
-            logger.info(f"Updated vulnerability status: {vuln_uuid} -> {status}")
+            logger.info(f"Updated finding status: {vuln_uuid} -> {status}")
 
         return vuln
 
@@ -289,7 +287,7 @@ class ScanRepository:
             logger.error("One or both scans not found for comparison")
             return None
 
-        # Get vulnerabilities for both scans
+        # Get findings for both scans.
         baseline_vulns = set(
             (v.vulnerability_type, v.file_path, v.line_number)
             for v in self.get_vulnerabilities_by_scan(baseline_scan_id)

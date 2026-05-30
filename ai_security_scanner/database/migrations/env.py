@@ -33,7 +33,7 @@ def get_url() -> str:
     password = os.getenv("DB_PASSWORD", "")
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
-    database = os.getenv("DB_NAME", "ai_security_scanner")
+    database = os.getenv("DB_NAME", "ai_reliability_scanner")
 
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 

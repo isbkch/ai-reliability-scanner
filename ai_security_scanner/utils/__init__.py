@@ -1,1 +1,1 @@
-"""Utility modules for the AI Security Scanner."""
+"""Utility modules for the AI Reliability Scanner."""

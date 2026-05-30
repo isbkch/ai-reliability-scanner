@@ -1,4 +1,4 @@
-"""Core data models for the AI Security Scanner."""
+"""Core data models for the AI Reliability Scanner."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,7 +9,7 @@ from dataclasses_json import dataclass_json
 
 
 class Severity(Enum):
-    """Vulnerability severity levels."""
+    """Finding severity levels."""
 
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -18,7 +18,7 @@ class Severity(Enum):
 
 
 class Confidence(Enum):
-    """Confidence levels for vulnerability detection."""
+    """Confidence levels for finding detection."""
 
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -40,7 +40,10 @@ class Location:
 @dataclass_json
 @dataclass
 class VulnerabilityResult:
-    """Result of a vulnerability scan."""
+    """Result of a reliability scan.
+
+    The class name is retained for compatibility with the original scanner API.
+    """
 
     id: str
     vulnerability_type: str

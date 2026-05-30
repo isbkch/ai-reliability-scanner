@@ -1,4 +1,4 @@
-"""Logging utilities for the AI Security Scanner."""
+"""Logging utilities for the AI Reliability Scanner."""
 
 import logging
 import sys

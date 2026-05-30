@@ -1,11 +1,10 @@
-"""AI-Powered Code Security Scanner.
+"""AI-Powered Code Reliability Scanner.
 
-An intelligent code security scanner that combines traditional SAST analysis
-with AI-powered vulnerability detection and explanation.
+An intelligent code reliability scanner for production-readiness risks.
 """
 
 __version__ = "0.1.0"
-__author__ = "AI Security Scanner Contributors"
+__author__ = "AI Reliability Scanner Contributors"
 __email__ = "dev@example.com"
 __license__ = "MIT"
 

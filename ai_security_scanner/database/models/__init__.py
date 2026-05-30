@@ -1,4 +1,4 @@
-"""Database models for AI Security Scanner."""
+"""Database models for AI Reliability Scanner."""
 
 from ai_security_scanner.database.models.scan_history import (
     Base,

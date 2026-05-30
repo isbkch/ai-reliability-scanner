@@ -1,4 +1,4 @@
-"""Main CLI interface for the AI Security Scanner."""
+"""Main CLI interface for the AI Reliability Scanner."""
 
 import asyncio
 import json
@@ -34,10 +34,9 @@ console = Console()
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
 def cli(ctx: click.Context, config: Optional[str], verbose: bool, debug: bool) -> None:
-    """AI-Powered Code Security Scanner.
+    """AI Reliability Scanner.
 
-    An intelligent security scanner that combines traditional SAST analysis
-    with AI-powered vulnerability detection and explanation.
+    Reviews services for production-readiness and reliability risks.
     """
     # Ensure that ctx.obj exists and is a dict
     ctx.ensure_object(dict)
@@ -96,7 +95,7 @@ def scan(
     github_repo: Optional[str],
     branch: Optional[str],
 ) -> None:
-    """Scan a directory or file for security vulnerabilities."""
+    """Scan a directory or file for reliability risks."""
     config: Config = ctx.obj["config"]
 
     # Override AI analysis setting
@@ -181,7 +180,7 @@ async def _run_scan(
         console=console,
         transient=True,
     ) as progress:
-        scan_task = progress.add_task("Scanning for vulnerabilities...", total=None)
+        scan_task = progress.add_task("Scanning for reliability risks...", total=None)
 
         # Scan directory
         if Path(path).is_dir():
@@ -240,13 +239,14 @@ async def _run_scan(
 def output_json(result: "ScanResult", file: Optional[str]) -> None:
     """Output results in JSON format."""
     output_data = result.to_dict()
+    output_data["findings"] = output_data.pop("vulnerabilities", [])
 
     if file:
         with open(file, "w") as f:
             json.dump(output_data, f, indent=2, default=str)
         console.print(f"[green]Results saved to {file}[/green]")
     else:
-        console.print(json.dumps(output_data, indent=2, default=str))
+        click.echo(json.dumps(output_data, indent=2, default=str))
 
 
 def output_sarif(result: "ScanResult", file: Optional[str]) -> None:
@@ -268,19 +268,19 @@ def output_table(result: "ScanResult") -> None:
     summary_text = Text()
     summary_text.append(f"Files Scanned: {result.files_scanned}\n")
     summary_text.append(f"Lines Scanned: {result.total_lines_scanned}\n")
-    summary_text.append(f"Vulnerabilities Found: {len(result.vulnerabilities)}\n")
+    summary_text.append(f"Reliability Findings: {len(result.vulnerabilities)}\n")
     summary_text.append(f"Scan Duration: {result.scan_duration:.2f}s\n")
 
     console.print(Panel(summary_text, title="Scan Summary", border_style="blue"))
 
     if not result.vulnerabilities:
-        console.print("[green]No vulnerabilities found![/green]")
+        console.print("[green]No reliability risks found![/green]")
         return
 
-    # Vulnerabilities table
-    table = Table(title="Security Vulnerabilities")
+    # Findings table
+    table = Table(title="Reliability Findings")
     table.add_column("Severity", style="bold")
-    table.add_column("Type", style="cyan")
+    table.add_column("Finding", style="cyan")
     table.add_column("File", style="magenta")
     table.add_column("Line", justify="right")
     table.add_column("Description", style="white")
@@ -314,7 +314,7 @@ def output_table(result: "ScanResult") -> None:
     ai_analyzed = sum(1 for vuln in result.vulnerabilities if vuln.ai_explanation)
     if ai_analyzed > 0:
         console.print(
-            f"\n[blue]AI Analysis: {ai_analyzed}/{len(result.vulnerabilities)} vulnerabilities analyzed with AI[/blue]"
+            f"\n[blue]AI Analysis: {ai_analyzed}/{len(result.vulnerabilities)} findings analyzed with AI[/blue]"
         )
 
 
@@ -333,7 +333,7 @@ def output_table(result: "ScanResult") -> None:
 def github(
     ctx: click.Context, repo: str, branch: Optional[str], output: str, file: Optional[str]
 ) -> None:
-    """Scan a GitHub repository for vulnerabilities."""
+    """Scan a GitHub repository for reliability risks."""
     config: Config = ctx.obj["config"]
 
     try:
@@ -387,10 +387,10 @@ def config_info(ctx: click.Context) -> None:
 @cli.command()
 @click.argument("code")
 @click.option("--language", "-l", required=True, help="Programming language")
-@click.option("--type", "-t", help="Vulnerability type to check for")
+@click.option("--type", "-t", help="Reliability finding type to check for")
 @click.pass_context
 def analyze(ctx: click.Context, code: str, language: str, type: Optional[str]) -> None:
-    """Analyze a code snippet for vulnerabilities."""
+    """Analyze a code snippet for reliability risks."""
     config: Config = ctx.obj["config"]
 
     try:
@@ -401,13 +401,13 @@ def analyze(ctx: click.Context, code: str, language: str, type: Optional[str]) -
             vulnerabilities = [v for v in vulnerabilities if v.vulnerability_type == type]
 
         if not vulnerabilities:
-            console.print("[green]No vulnerabilities found in the code snippet![/green]")
+            console.print("[green]No reliability risks found in the code snippet![/green]")
             return
 
-        # Display vulnerabilities
+        # Display findings
         for vuln in vulnerabilities:
             panel_content = Text()
-            panel_content.append(f"Type: {vuln.vulnerability_type}\n")
+            panel_content.append(f"Finding: {vuln.vulnerability_type}\n")
             panel_content.append(f"Severity: {vuln.severity.value}\n")
             panel_content.append(f"Confidence: {vuln.confidence.value}\n")
             panel_content.append(f"Description: {vuln.description}\n")
@@ -418,7 +418,7 @@ def analyze(ctx: click.Context, code: str, language: str, type: Optional[str]) -
             if vuln.ai_explanation:
                 panel_content.append(f"AI Analysis: {vuln.ai_explanation}\n")
 
-            console.print(Panel(panel_content, title="Vulnerability Found", border_style="red"))
+            console.print(Panel(panel_content, title="Reliability Finding", border_style="red"))
 
     except Exception as e:
         console.print(f"[red]Error analyzing code: {e}[/red]")
@@ -435,7 +435,7 @@ def version(ctx: click.Context) -> None:
     """Display version information."""
     from ai_security_scanner import __version__
 
-    console.print(f"AI Security Scanner v{__version__}")
+    console.print(f"AI Reliability Scanner v{__version__}")
 
 
 @cli.group()
@@ -522,7 +522,7 @@ def history(ctx: click.Context, limit: int) -> None:
         table.add_column("Timestamp", style="white")
         table.add_column("Target", style="magenta")
         table.add_column("Files", justify="right")
-        table.add_column("Vulnerabilities", justify="right")
+        table.add_column("Findings", justify="right")
         table.add_column("Duration", justify="right")
 
         for scan in scans:
@@ -578,8 +578,8 @@ def show(ctx: click.Context, scan_id: str) -> None:
 
             console.print(Panel(scan_info, title="Scan Details", border_style="blue"))
 
-            # Vulnerability summary
-            summary_table = Table(title="Vulnerability Summary")
+            # Finding summary
+            summary_table = Table(title="Reliability Finding Summary")
             summary_table.add_column("Severity", style="bold")
             summary_table.add_column("Count", justify="right")
 
@@ -591,12 +591,12 @@ def show(ctx: click.Context, scan_id: str) -> None:
 
             console.print(summary_table)
 
-            # Get vulnerabilities
+            # Get findings
             vulnerabilities = repository.get_vulnerabilities_by_scan(scan_id)
 
             if vulnerabilities:
-                vuln_table = Table(title="Vulnerabilities")
-                vuln_table.add_column("Type", style="cyan")
+                vuln_table = Table(title="Reliability Findings")
+                vuln_table.add_column("Finding", style="cyan")
                 vuln_table.add_column("Severity", style="bold")
                 vuln_table.add_column("File", style="magenta")
                 vuln_table.add_column("Line", justify="right")
@@ -641,10 +641,8 @@ def stats(ctx: click.Context) -> None:
         table.add_column("Value", style="white")
 
         table.add_row("Total Scans", str(statistics["total_scans"]))
-        table.add_row("Total Vulnerabilities", str(statistics["total_vulnerabilities"]))
-        table.add_row(
-            "Avg Vulnerabilities per Scan", f"{statistics['avg_vulnerabilities_per_scan']:.2f}"
-        )
+        table.add_row("Total Findings", str(statistics["total_vulnerabilities"]))
+        table.add_row("Avg Findings per Scan", f"{statistics['avg_vulnerabilities_per_scan']:.2f}")
         table.add_row("Total Files Scanned", str(statistics["total_files_scanned"]))
         table.add_row("Avg Scan Duration", f"{statistics['avg_scan_duration']:.2f}s")
 

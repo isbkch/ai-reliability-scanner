@@ -1,1 +1,1 @@
-"""Tests for the AI Security Scanner."""
+"""Tests for the AI Reliability Scanner."""
